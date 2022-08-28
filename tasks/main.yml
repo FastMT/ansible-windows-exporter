@@ -101,7 +101,7 @@
   check_mode: no
   changed_when: false
 
-- name: Windows Exporter - Get main IP address
+- name: Set main IP address into windows_exporter_main_ip variable
   set_fact:
     windows_exporter_main_ip: "{{ windows_exporter_ipprobe.stdout | ansible.utils.ipaddr('address') }}" 
 
