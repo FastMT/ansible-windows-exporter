@@ -1,0 +1,109 @@
+- name: Print exporter's parameters
+  debug:
+    msg:
+      - "windows_exporter_extra_collectors: {{ windows_exporter_extra_collectors }}" 
+      - "windows_exporter_extra_parameters: {{ windows_exporter_extra_parameters }}"
+
+- name: Create install folder
+  win_file:
+    path: "{{ windows_exporter_install_path }}"
+    state: directory
+
+- name: Check if windows_exporter.exe file exists
+  win_stat:
+    path: "{{ windows_exporter_install_path }}\\windows_exporter.exe"
+  register: windows_exporter_exe
+
+- name: Stop service for update if exporter exe is not correct
+  win_service: 
+    name: windows_exporter
+    state: stopped
+  when: 
+    - windows_exporter_exe.stat.exists
+    - windows_exporter_exe.stat.checksum != windows_exporter_checksum
+
+- name: Download node_exporter.exe file from Github
+  win_get_url:
+    url: "{{ windows_exporter_url }}"
+    dest: "{{ windows_exporter_install_path }}\\windows_exporter.exe"
+  when: 
+    - windows_exporter_exe.stat.checksum | default ('') != windows_exporter_checksum
+  register: windows_exporter_downloaded
+  until: windows_exporter_downloaded is succeeded
+  retries: 5
+  delay: 2
+
+# Install windows service
+- name: Register windows_exporter as a service
+  win_service:
+    name: windows_exporter
+    path: "{{ windows_exporter_install_path }}\\windows_exporter.exe --collectors.enabled=\"cpu,cs,logical_disk,net,os,system,memory,tcp,logon,textfile,{{ windows_exporter_extra_collectors }}\" --log.format=\"logger:eventlog?name=windows-exporter\" --telemetry.addr=\"{{ windows_exporter_listen_ip }}:9182\" {{ windows_exporter_extra_parameters }}"
+    display_name: Windows node exporter
+    state: started
+    start_mode: delayed
+#    desktop_interact: yes
+    username: 'LocalSystem'
+    failure_actions:
+    - type: restart
+      delay_ms: 60000
+    - type: restart
+      delay_ms: 60000
+    - type: restart
+      delay_ms: 180000
+    failure_reset_period_sec: 3600
+  register: windows_exporter
+  ignore_errors: yes
+  retries: 5
+  delay: 30
+
+- name: Start (restart) service if required
+  win_service: 
+    name: windows_exporter
+    state: restarted
+  when: >
+    windows_exporter.changed or 
+    windows_exporter_downloaded.changed
+  ignore_errors: yes
+  retries: 5
+  delay: 30
+
+- debug:
+    var: windows_exporter_firewall
+
+# Create firewall rule
+- name: Firewall rule to allow port 9182
+  win_firewall_rule:
+    name: Windows-exporter
+    description: Windows exporter
+    localport: 9182
+    action: allow
+    direction: in
+    protocol: tcp
+    remoteip: "{{ windows_exporter_firewall | join (',') }}"
+    state: present
+    enabled: yes
+
+################################################################################
+# Get main IP of the windows server - to be used later when deploy scrape configs
+#
+
+# Run powershell script to get main IP address into stdout    
+- name: Get main IPv4 address
+  win_shell: |
+      $defaultRouteNic = Get-NetRoute -DestinationPrefix 0.0.0.0/0 `
+      | Sort-Object -Property RouteMetric `
+      | Select-Object -ExpandProperty ifIndex 
+      $ipv4 = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $defaultRouteNic `
+      | Select-Object -ExpandProperty IPAddress 
+      if ($ipv4.GetType().Name -eq "Object[]") { Write-Output $ipv4[0] } `
+      else { Write-Output $ipv4 }
+  register: windows_exporter_ipprobe
+  check_mode: no
+  changed_when: false
+
+- name: Windows Exporter - Get main IP address
+  set_fact:
+    windows_exporter_main_ip: "{{ windows_exporter_ipprobe.stdout | ansible.utils.ipaddr('address') }}" 
+
+- debug:
+    var: windows_exporter_main_ip
