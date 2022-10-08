@@ -2,8 +2,8 @@
 # Windows exporter EXE URL and SHA1 checksum
 # How to calculate SHA1 for files
 # sha1sum *.exe
-windows_exporter_url: "https://github.com/prometheus-community/windows_exporter/releases/download/v0.19.0/windows_exporter-0.19.0-amd64.exe"
-windows_exporter_checksum: "5216358905556bc8ce730d4f157c9b6def00f02f"
+windows_exporter_url: "https://github.com/prometheus-community/windows_exporter/releases/download/v0.20.0/windows_exporter-0.20.0-amd64.exe"
+windows_exporter_checksum: "0f90cc3cc01f3b96c74314dc562675948f5c89b1"
 
 # Installation folder
 windows_exporter_install_path: "C:\\BIN"
