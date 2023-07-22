@@ -9,7 +9,7 @@ Create requirements.yml file
 # Include windows-exporter role
 - src: https://github.com/FastMT/ansible-windows-exporter.git
   name: windows-exporter
-  version: "v1.0.1"
+  version: "v1.0.2"
 ```
 
 Install external module into ~/.ansible/roles folder
