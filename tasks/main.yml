@@ -15,10 +15,10 @@
   register: windows_exporter_exe
 
 - name: Stop service for update if exporter exe is not correct
-  win_service: 
+  win_service:
     name: windows_exporter
     state: stopped
-  when: 
+  when:
     - windows_exporter_exe.stat.exists
     - windows_exporter_exe.stat.checksum != windows_exporter_checksum
 
@@ -26,7 +26,7 @@
   win_get_url:
     url: "{{ windows_exporter_url }}"
     dest: "{{ windows_exporter_install_path }}\\windows_exporter.exe"
-  when: 
+  when:
     - windows_exporter_exe.stat.checksum | default ('') != windows_exporter_checksum
   register: windows_exporter_downloaded
   until: windows_exporter_downloaded is succeeded
@@ -37,7 +37,7 @@
 - name: Register windows_exporter as a service
   win_service:
     name: windows_exporter
-    path: "{{ windows_exporter_install_path }}\\windows_exporter.exe --collectors.enabled=\"cpu,cs,logical_disk,net,os,system,memory,tcp,logon,textfile,{{ windows_exporter_extra_collectors }}\" --log.format=\"logger:eventlog?name=windows-exporter\" --telemetry.addr=\"{{ windows_exporter_listen_ip }}:9182\" {{ windows_exporter_extra_parameters }}"
+    path: "{{ windows_exporter_install_path }}\\windows_exporter.exe --collectors.enabled=\"cpu,cs,logical_disk,net,os,system,memory,tcp,logon,textfile,{{ windows_exporter_extra_collectors }}\" --web.listen-address=\"{{ windows_exporter_listen_ip }}:9182\" {{ windows_exporter_extra_parameters }}"
     display_name: Windows node exporter
     state: started
     start_mode: delayed
@@ -57,7 +57,7 @@
   delay: 30
 
 - name: Start (restart) service if required
-  win_service: 
+  win_service:
     name: windows_exporter
     state: restarted
   when: >
@@ -103,7 +103,7 @@
 
 - name: Set main IP address into windows_exporter_main_ip variable
   set_fact:
-    windows_exporter_main_ip: "{{ windows_exporter_ipprobe.stdout | ansible.utils.ipaddr('address') }}" 
+    windows_exporter_main_ip: "{{ windows_exporter_ipprobe.stdout | ansible.utils.ipaddr('address') }}"
 
 - debug:
     var: windows_exporter_main_ip
